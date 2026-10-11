@@ -163,6 +163,7 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/start-nanobot-host" "$HOME/bin/start-nanobot-host"
   install -m 700 "$repo/scripts/debug-gateway" "$HOME/bin/debug-gateway"
   install -m 700 "$repo/scripts/collect-nanobot-logs" "$HOME/bin/collect-nanobot-logs"
+  install -m 700 "$repo/scripts/collect-debian-inner.sh" "$HOME/bin/collect-debian-inner.sh"
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
   if ! grep -q 'HOME/bin' "$HOME/.bashrc" 2>/dev/null; then
     printf '\n# nanobot-android-termux\nexport PATH="$HOME/bin:$PATH"\n' >>"$HOME/.bashrc"

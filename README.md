@@ -77,7 +77,8 @@ If `gateway.log` shows *Starting nanobot gateway* → *Registered 23 tools* → 
 2. Inside Debian: **`tail -f /root/.nanobot/logs/gateway.log`** (Nanobot’s own log; often has Telegram/API errors).  
 3. Confirm token: in Debian, `curl -s "https://api.telegram.org/bot<TOKEN>/getMe"` should return `"ok":true`.  
 4. On the **emulator**, check internet/DNS; Telegram must reach `api.telegram.org`.  
-5. `proot info: vpid 1: terminated with signal 4` often appears when the proot session ends; focus on **why `nanobot gateway` exits** (lines above it in the log).
+5. **`gateway exit rc=132`** = **SIGILL** (illegal instruction). Often seen on the **Android emulator + proot**, not on a physical phone. Test on your HONOR device if the emulator keeps dying after “Registered 23 tools”.
+6. `proot info: vpid 1: terminated with signal 4` often appears when the proot session ends; focus on **why `nanobot gateway` exits** (lines above it in the log).
 
 Update Termux packages if proot misbehaves: `pkg upgrade -y proot proot-distro`.
 

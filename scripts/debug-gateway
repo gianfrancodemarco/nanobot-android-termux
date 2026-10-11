@@ -15,9 +15,5 @@ curl -fsS -o /dev/null -w "telegram HTTP %{http_code}\n" https://api.telegram.or
 echo "--- last lines debian gateway log ---"
 tail -n 30 /root/.nanobot/logs/gateway.log 2>/dev/null || echo "(no /root/.nanobot/logs/gateway.log yet)"
 echo "--- starting gateway (Ctrl+C to stop) ---"
-if command -v script >/dev/null; then
-  exec script -qefc "nanobot gateway" /dev/null
-else
-  exec nanobot gateway
-fi
+exec nanobot gateway
 '
