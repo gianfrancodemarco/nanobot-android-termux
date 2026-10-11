@@ -37,9 +37,10 @@ bash setup.sh
 3. Installs **Debian** rootfs if missing  
 4. Creates `/root/nanobot-env`, installs **nanobot-ai** (and binary wheels for **rapidfuzz**)  
 5. Copies `config/config.json.example` → `/root/.nanobot/config.json` if none exists  
-6. Installs `~/bin/nanobot-loop` and `~/.termux/boot/00-start-nanobot`
+6. **Interactive (tmux):** prompts for **OpenAI API key**, **Telegram bot token**, optional **chat model** (default `gpt-4.1-mini`) and **Whisper language** (default `it`), then patches config (mode `600`)  
+7. Installs `~/bin/nanobot-loop` and `~/.termux/boot/00-start-nanobot`
 
-Secrets stay on the device; only the example config is in git.
+Secrets stay on the device; only the example config is in git. Non-interactive runs (`curl | bash`) skip prompts — edit config in Debian afterward.
 
 ## Layout
 

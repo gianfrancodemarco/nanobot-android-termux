@@ -104,17 +104,87 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
 }
 
-maybe_onboard() {
-  if proot-distro login debian -- /bin/bash -lc 'grep -q PASTE_YOUR_ /root/.nanobot/config.json 2>/dev/null'; then
-    log "Config still has placeholders — edit /root/.nanobot/config.json in Debian, then run: nanobot onboard (optional)"
+# OpenAI + Telegram + chat model + Whisper language (matches config/config.json.example).
+configure_secrets() {
+  if [[ ! -t 0 ]]; then
+    log "Non-interactive: config.json unchanged — edit /root/.nanobot/config.json in Debian"
     return 0
   fi
-  if [[ -t 0 ]]; then
-    log "Running nanobot onboard (interactive)"
-    proot-distro login debian -- /bin/bash -lc 'source /root/nanobot-env/bin/activate && nanobot onboard' || true
-  else
-    log "Non-interactive shell: skip nanobot onboard. Run inside Debian when ready."
+
+  if proot-distro login debian -- /bin/bash -lc 'test -f /root/.nanobot/config.json'; then
+    if ! proot-distro login debian -- /bin/bash -lc 'grep -q PASTE_YOUR_ /root/.nanobot/config.json 2>/dev/null'; then
+      read -r -p "Config already has secrets. Re-enter OpenAI key and Telegram token? [y/N] " ans
+      [[ "$ans" =~ ^[yY]$ ]] || {
+        log "Keeping existing /root/.nanobot/config.json"
+        return 0
+      }
+    fi
   fi
+
+  log "Nanobot secrets (hidden input). Defaults: model gpt-4.1-mini, Whisper language it"
+
+  proot-distro login debian -- /bin/bash -lc '
+set -euo pipefail
+CFG=/root/.nanobot/config.json
+[[ -f "$CFG" ]] || { echo "missing $CFG" >&2; exit 1; }
+
+OPENAI_KEY=""
+while [[ -z "$OPENAI_KEY" ]]; do
+  read -r -s -p "OpenAI API key: " OPENAI_KEY
+  echo
+done
+
+TELEGRAM_TOKEN=""
+while [[ -z "$TELEGRAM_TOKEN" ]]; do
+  read -r -s -p "Telegram bot token: " TELEGRAM_TOKEN
+  echo
+done
+
+read -r -p "Chat model [gpt-4.1-mini]: " CHAT_MODEL
+CHAT_MODEL=${CHAT_MODEL:-gpt-4.1-mini}
+
+read -r -p "Voice note language (Whisper) [it]: " TRANS_LANG
+TRANS_LANG=${TRANS_LANG:-it}
+
+export OPENAI_KEY TELEGRAM_TOKEN CHAT_MODEL TRANS_LANG
+python3 <<'"'"'PY'"'"'
+import json, os
+
+path = "/root/.nanobot/config.json"
+with open(path, encoding="utf-8") as f:
+    cfg = json.load(f)
+
+cfg.setdefault("agents", {}).setdefault("defaults", {})
+cfg["agents"]["defaults"]["model"] = os.environ["CHAT_MODEL"]
+cfg["agents"]["defaults"]["provider"] = "openai"
+
+cfg.setdefault("providers", {}).setdefault("openai", {})
+cfg["providers"]["openai"]["apiKey"] = os.environ["OPENAI_KEY"]
+
+cfg.setdefault("channels", {}).setdefault("telegram", {})
+cfg["channels"]["telegram"]["enabled"] = True
+cfg["channels"]["telegram"]["token"] = os.environ["TELEGRAM_TOKEN"]
+
+cfg.setdefault("transcription", {})
+cfg["transcription"].update(
+    {
+        "enabled": True,
+        "provider": "openai",
+        "model": "whisper-1",
+        "language": os.environ["TRANS_LANG"],
+        "maxDurationSec": 120,
+        "maxUploadMb": 25,
+    }
+)
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(cfg, f, indent=2)
+    f.write("\n")
+os.chmod(path, 0o600)
+PY
+unset OPENAI_KEY TELEGRAM_TOKEN CHAT_MODEL TRANS_LANG
+echo "Wrote $CFG (mode 600)"
+'
 }
 
 print_next_steps() {
@@ -125,7 +195,6 @@ Done.
 Manual steps Android cannot automate:
   1. Allow Termux to run in the background (OEM battery / app launch settings).
   2. Install Termux:Boot; open the Boot app once. On some devices use a matching-key boot-fix build.
-  3. Edit secrets: proot-distro login debian — nano /root/.nanobot/config.json
 
 Start gateway now (foreground test):
   proot-distro login debian
@@ -154,8 +223,8 @@ main() {
   ensure_debian
   debian_setup
   install_config_example "$REPO/config/config.json.example"
+  configure_secrets
   install_termux_scripts "$REPO"
-  maybe_onboard
   print_next_steps
 }
 
