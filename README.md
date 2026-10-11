@@ -9,6 +9,24 @@ Based on the [setup write-up](https://github.com/gianfrancodemarco/site/blob/mai
 - **ARM64 Termux** (`uname -m` and `dpkg --print-architecture` → `aarch64`)
 - Network on the device
 
+### APKs (install before `setup.sh`)
+
+The installer does **not** download these; sideload or open the links on the device.
+
+| App | APK | Notes |
+| --- | --- | --- |
+| **Termux** | [termux-app v0.119.0-beta.3 arm64 debug (API 7)](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3%2Bapt-android-7-github-debug_arm64-v8a.apk) | Same build as the [blog post](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md). [All v0.119.0-beta.3 assets](https://github.com/termux/termux-app/releases/tag/v0.119.0-beta.3). |
+| **Termux:Boot** (optional, for reboot) | [termux-boot-app v0.8.1-boot-fix](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-boot-app_v0.8.1-boot-fix_debug.apk) | Patched boot receiver ([oswaldlow/termux-boot](https://github.com/oswaldlow/termux-boot)); use with Termux from the **same signing family**. If boot fails on Android 14+, try [matching-key Termux universal debug](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-app_matching-key_universal-debug.apk) from that release instead of the stock Termux APK above. |
+
+From a Mac with the emulator running:
+
+```bash
+curl -L -o termux.apk 'https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3%2Bapt-android-7-github-debug_arm64-v8a.apk'
+adb install -r termux.apk
+```
+
+Open **Termux** once, then **Termux:Boot** once after installing the boot APK.
+
 ## One-shot setup (tmux)
 
 From a fresh Termux session:

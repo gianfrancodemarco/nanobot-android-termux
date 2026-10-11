@@ -194,7 +194,8 @@ Done.
 
 Manual steps Android cannot automate:
   1. Allow Termux to run in the background (OEM battery / app launch settings).
-  2. Install Termux:Boot; open the Boot app once. On some devices use a matching-key boot-fix build.
+  2. Termux:Boot (patched APK): https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-boot-app_v0.8.1-boot-fix_debug.apk
+     Open the Boot app once after install. Matching-key Termux (if needed): see README APK table.
 
 Start gateway now (foreground test):
   proot-distro login debian
