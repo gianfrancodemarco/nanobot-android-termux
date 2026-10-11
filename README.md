@@ -69,6 +69,18 @@ Secrets stay on the device; only the example config is in git. Non-interactive r
 | `scripts/start-nanobot-host` | Start/restart tmux session + attach |
 | `scripts/00-start-nanobot` | Termux:Boot entry |
 
+## Troubleshooting gateway restarts
+
+If `gateway.log` shows *Starting nanobot gateway* → *Registered 23 tools* → exit every ~10s:
+
+1. Run **`~/bin/debug-gateway`** (or `./scripts/debug-gateway`) and watch for errors after startup.  
+2. Inside Debian: **`tail -f /root/.nanobot/logs/gateway.log`** (Nanobot’s own log; often has Telegram/API errors).  
+3. Confirm token: in Debian, `curl -s "https://api.telegram.org/bot<TOKEN>/getMe"` should return `"ok":true`.  
+4. On the **emulator**, check internet/DNS; Telegram must reach `api.telegram.org`.  
+5. `proot info: vpid 1: terminated with signal 4` often appears when the proot session ends; focus on **why `nanobot gateway` exits** (lines above it in the log).
+
+Update Termux packages if proot misbehaves: `pkg upgrade -y proot proot-distro`.
+
 ## After install
 
 - Whitelist **Termux** in battery / background settings.  

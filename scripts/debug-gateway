@@ -1,0 +1,23 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Run nanobot gateway in Debian with a TTY and verbose logging (foreground).
+set -euo pipefail
+export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
+export PROOT_NO_SECCOMP=1
+
+echo "Debian nanobot + Telegram check (redact output if you share logs)"
+proot-distro login debian -- /bin/bash -lc '
+set -euo pipefail
+source /root/nanobot-env/bin/activate
+command -v nanobot
+nanobot --version 2>/dev/null || true
+echo "--- curl api.telegram.org ---"
+curl -fsS -o /dev/null -w "telegram HTTP %{http_code}\n" https://api.telegram.org || echo "curl failed"
+echo "--- last lines debian gateway log ---"
+tail -n 30 /root/.nanobot/logs/gateway.log 2>/dev/null || echo "(no /root/.nanobot/logs/gateway.log yet)"
+echo "--- starting gateway (Ctrl+C to stop) ---"
+if command -v script >/dev/null; then
+  exec script -qefc "nanobot gateway" /dev/null
+else
+  exec nanobot gateway
+fi
+'

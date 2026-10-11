@@ -2,17 +2,33 @@
 # Gateway supervisor — logs to ~/nanobot-logs/gateway.log (and tmux pane via tee).
 set +e
 export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
+export PROOT_NO_SECCOMP=1
 
 LOG="$HOME/nanobot-logs/gateway.log"
 mkdir -p "$HOME/nanobot-logs"
+
+run_gateway_in_debian() {
+  proot-distro login debian -- /bin/bash -lc '
+set +e
+source /root/nanobot-env/bin/activate
+# Some CLIs exit when stdin is not a TTY under proot; script provides a pseudo-TTY.
+if command -v script >/dev/null 2>&1; then
+  exec script -qefc "exec nanobot gateway" /dev/null
+else
+  exec nanobot gateway
+fi
+'
+}
 
 echo "[$(date)] nanobot-loop started (pid $$)" | tee -a "$LOG"
 
 while true; do
   echo "[$(date)] start nanobot gateway" | tee -a "$LOG"
-  proot-distro login debian -- /bin/bash -lc \
-    'source /root/nanobot-env/bin/activate && exec nanobot gateway' 2>&1 | tee -a "$LOG"
+  run_gateway_in_debian 2>&1 | tee -a "$LOG"
   rc=${PIPESTATUS[0]}
   echo "[$(date)] gateway exit rc=$rc; sleep 10s" | tee -a "$LOG"
+  if [[ "$rc" -eq 0 ]]; then
+    echo "[$(date)] hint: if this repeats, run debug-gateway and check /root/.nanobot/logs/gateway.log in Debian" | tee -a "$LOG"
+  fi
   sleep 10
 done
