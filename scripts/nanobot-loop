@@ -1,10 +1,18 @@
 #!/data/data/com.termux/files/usr/bin/bash
+# Gateway supervisor — logs to ~/nanobot-logs/gateway.log (and tmux pane via tee).
+set +e
+export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
+
 LOG="$HOME/nanobot-logs/gateway.log"
 mkdir -p "$HOME/nanobot-logs"
+
+echo "[$(date)] nanobot-loop started (pid $$)" | tee -a "$LOG"
+
 while true; do
-  echo "[$(date)] start nanobot gateway" >>"$LOG"
+  echo "[$(date)] start nanobot gateway" | tee -a "$LOG"
   proot-distro login debian -- /bin/bash -lc \
-    'source /root/nanobot-env/bin/activate && exec nanobot gateway' >>"$LOG" 2>&1
-  echo "[$(date)] gateway exit rc=$?; sleep 10s" >>"$LOG"
+    'source /root/nanobot-env/bin/activate && exec nanobot gateway' 2>&1 | tee -a "$LOG"
+  rc=${PIPESTATUS[0]}
+  echo "[$(date)] gateway exit rc=$rc; sleep 10s" | tee -a "$LOG"
   sleep 10
 done

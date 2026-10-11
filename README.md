@@ -66,6 +66,7 @@ Secrets stay on the device; only the example config is in git. Non-interactive r
 | `setup.sh` | Full install (Termux + Debian) |
 | `config/config.json.example` | Template for `/root/.nanobot/config.json` |
 | `scripts/nanobot-loop` | Gateway restart loop (Termux) |
+| `scripts/start-nanobot-host` | Start/restart tmux session + attach |
 | `scripts/00-start-nanobot` | Termux:Boot entry |
 
 ## After install
@@ -73,7 +74,7 @@ Secrets stay on the device; only the example config is in git. Non-interactive r
 - Whitelist **Termux** in battery / background settings.  
 - **Termux:Boot** APK must be installed and opened once (see APK table above).  
 - Edit config inside Debian: `proot-distro login debian` → `/root/.nanobot/config.json`  
-- Test: `tmux new -s nanobot-host ~/bin/nanobot-loop` → `tail -f ~/nanobot-logs/gateway.log`  
+- Test: `start-nanobot-host` (or `tail -f ~/nanobot-logs/gateway.log` in another Termux window)  
 - Installer trace: `tail -f ~/nanobot-logs/setup.log`
 
 ## License

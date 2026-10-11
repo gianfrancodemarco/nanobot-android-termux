@@ -1,0 +1,25 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# (Re)start detached tmux session running nanobot-loop, then attach.
+set -euo pipefail
+
+SESSION=nanobot-host
+LOOP="$HOME/bin/nanobot-loop"
+
+[[ -x "$LOOP" ]] || {
+  echo "Missing $LOOP — run ./setup.sh first." >&2
+  exit 1
+}
+
+mkdir -p "$HOME/nanobot-logs"
+
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "Stopping existing session: $SESSION"
+  tmux kill-session -t "$SESSION"
+fi
+
+tmux new-session -d -s "$SESSION" "$LOOP"
+echo "Session $SESSION running in background."
+echo "Gateway log: tail -f ~/nanobot-logs/gateway.log"
+echo "Attach (Ctrl+B then D to detach): tmux attach -t $SESSION"
+sleep 1
+exec tmux attach -t "$SESSION"

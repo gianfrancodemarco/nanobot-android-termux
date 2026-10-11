@@ -160,6 +160,7 @@ install_termux_scripts() {
   log "Installing Termux loop and boot scripts"
   mkdir -p "$HOME/bin" "$HOME/.termux/boot" "$HOME/nanobot-logs"
   install -m 700 "$repo/scripts/nanobot-loop" "$HOME/bin/nanobot-loop"
+  install -m 700 "$repo/scripts/start-nanobot-host" "$HOME/bin/start-nanobot-host"
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
 }
 
@@ -269,8 +270,11 @@ Start gateway now (foreground test):
   source /root/nanobot-env/bin/activate
   nanobot gateway
 
-Or host session + loop (if tmux prints [exited], run ~/bin/nanobot-loop in foreground to see the error):
-  tmux new -s nanobot-host ~/bin/nanobot-loop
+Or start gateway in tmux (recommended — replaces an old nanobot-host session if needed):
+  start-nanobot-host
+
+  The pane shows gateway output; if it looks idle, tail -f ~/nanobot-logs/gateway.log
+  Do not run: tmux new -s nanobot-host ...  (fails if session already exists)
 
 Logs:
   tail -f ~/nanobot-logs/setup.log
