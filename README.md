@@ -25,16 +25,6 @@ Open **Termux** once, then **Termux:Boot** once.
 
 The blog also records the official **arm64** debug build `termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk` from [termux/termux-app v0.119.0-beta.3](https://github.com/termux/termux-app/releases/tag/v0.119.0-beta.3) — use that only if you are **not** using the boot-fix add-on (different signing key; boot scripts will not pair with matching-key Boot). Direct link: [arm64-v8a API 7 debug](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk).
 
-From a Mac with the emulator running (matching-key pair):
-
-```bash
-BASE='https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix'
-curl -L -o termux.apk "$BASE/termux-app_matching-key_universal-debug.apk"
-curl -L -o termux-boot.apk "$BASE/termux-boot-app_v0.8.1-boot-fix_debug.apk"
-adb install -r termux.apk
-adb install -r termux-boot.apk
-```
-
 ## One-shot setup (tmux)
 
 From a fresh Termux session:
