@@ -1,0 +1,9 @@
+#!/data/data/com.termux/files/usr/bin/bash
+LOG_DIR="$HOME/nanobot-logs"
+mkdir -p "$LOG_DIR"
+exec >>"$LOG_DIR/boot.log" 2>&1
+echo "===== boot $(date) ====="
+termux-wake-lock 2>/dev/null || true
+sleep 15
+if tmux has-session -t nanobot-host 2>/dev/null; then exit 0; fi
+tmux new-session -d -s nanobot-host "$HOME/bin/nanobot-loop"

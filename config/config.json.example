@@ -1,0 +1,27 @@
+{
+  "agents": {
+    "defaults": {
+      "model": "gpt-4.1-mini",
+      "provider": "openai"
+    }
+  },
+  "providers": {
+    "openai": {
+      "apiKey": "PASTE_YOUR_OPENAI_API_KEY_HERE"
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "token": "PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE"
+    }
+  },
+  "transcription": {
+    "enabled": true,
+    "provider": "openai",
+    "model": "whisper-1",
+    "language": "it",
+    "maxDurationSec": 120,
+    "maxUploadMb": 25
+  }
+}

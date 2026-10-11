@@ -1,0 +1,10 @@
+#!/data/data/com.termux/files/usr/bin/bash
+LOG="$HOME/nanobot-logs/gateway.log"
+mkdir -p "$HOME/nanobot-logs"
+while true; do
+  echo "[$(date)] start nanobot gateway" >>"$LOG"
+  proot-distro login debian -- /bin/bash -lc \
+    'source /root/nanobot-env/bin/activate && exec nanobot gateway' >>"$LOG" 2>&1
+  echo "[$(date)] gateway exit rc=$?; sleep 10s" >>"$LOG"
+  sleep 10
+done
