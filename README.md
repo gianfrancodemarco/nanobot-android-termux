@@ -2,7 +2,7 @@
 
 Install [Nanobot](https://pypi.org/project/nanobot-ai/) in **proot Debian** on **ARM64 Termux**, plus boot/loop scripts for a Telegram gateway on your phone.
 
-Based on the [setup write-up](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md) (paths may vary).
+Based on the [setup write-up](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md).
 
 ## Prerequisites
 
@@ -11,21 +11,29 @@ Based on the [setup write-up](https://github.com/gianfrancodemarco/site/blob/mai
 
 ### APKs (install before `setup.sh`)
 
-The installer does **not** download these; sideload or open the links on the device.
+The installer does **not** download APKs. Install **both** from the **same release** so signing keys match (required for boot on Android 14+ per the blog).
 
-| App | APK | Notes |
-| --- | --- | --- |
-| **Termux** | [termux-app v0.119.0-beta.3 arm64 debug (API 7)](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3%2Bapt-android-7-github-debug_arm64-v8a.apk) | Same build as the [blog post](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md). [All v0.119.0-beta.3 assets](https://github.com/termux/termux-app/releases/tag/v0.119.0-beta.3). |
-| **Termux:Boot** (optional, for reboot) | [termux-boot-app v0.8.1-boot-fix](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-boot-app_v0.8.1-boot-fix_debug.apk) | Patched boot receiver ([oswaldlow/termux-boot](https://github.com/oswaldlow/termux-boot)); use with Termux from the **same signing family**. If boot fails on Android 14+, try [matching-key Termux universal debug](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-app_matching-key_universal-debug.apk) from that release instead of the stock Termux APK above. |
+**Release page (pick assets on phone if a direct link 404s):**  
+[oswaldlow/termux-boot — v0.8.1-boot-fix](https://github.com/oswaldlow/termux-boot/releases/tag/v0.8.1-boot-fix)
 
-From a Mac with the emulator running:
+| Order | App | Asset filename | Direct download |
+| ---: | --- | --- | --- |
+| 1 | **Termux** (matching-key) | `termux-app_matching-key_universal-debug.apk` | [download](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-app_matching-key_universal-debug.apk) |
+| 2 | **Termux:Boot** (boot-fix) | `termux-boot-app_v0.8.1-boot-fix_debug.apk` | [download](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-boot-app_v0.8.1-boot-fix_debug.apk) |
+
+Open **Termux** once, then **Termux:Boot** once.
+
+The blog also records the official **arm64** debug build `termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk` from [termux/termux-app v0.119.0-beta.3](https://github.com/termux/termux-app/releases/tag/v0.119.0-beta.3) — use that only if you are **not** using the boot-fix add-on (different signing key; boot scripts will not pair with matching-key Boot). Direct link: [arm64-v8a API 7 debug](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_arm64-v8a.apk).
+
+From a Mac with the emulator running (matching-key pair):
 
 ```bash
-curl -L -o termux.apk 'https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3%2Bapt-android-7-github-debug_arm64-v8a.apk'
+BASE='https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix'
+curl -L -o termux.apk "$BASE/termux-app_matching-key_universal-debug.apk"
+curl -L -o termux-boot.apk "$BASE/termux-boot-app_v0.8.1-boot-fix_debug.apk"
 adb install -r termux.apk
+adb install -r termux-boot.apk
 ```
-
-Open **Termux** once, then **Termux:Boot** once after installing the boot APK.
 
 ## One-shot setup (tmux)
 
@@ -72,7 +80,7 @@ Secrets stay on the device; only the example config is in git. Non-interactive r
 ## After install
 
 - Whitelist **Termux** in battery / background settings.  
-- Install **Termux:Boot** and launch it once.  
+- **Termux:Boot** APK must be installed and opened once (see APK table above).  
 - Edit config inside Debian: `proot-distro login debian` → `/root/.nanobot/config.json`  
 - Test: `tmux new -s nanobot-host ~/bin/nanobot-loop` → `tail -f ~/nanobot-logs/gateway.log`
 
