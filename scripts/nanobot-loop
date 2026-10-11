@@ -3,17 +3,18 @@
 set +e
 export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
 export PROOT_NO_SECCOMP=1
+# shellcheck source=/dev/null
+source "$HOME/bin/nanobot-distro.sh"
 
 LOG="$HOME/nanobot-logs/gateway.log"
 mkdir -p "$HOME/nanobot-logs"
 
 run_gateway_in_debian() {
-  # Avoid `script` here — it correlated with rc=132 (SIGILL) on some emulators.
-  proot-distro login debian -- /bin/bash -lc \
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc \
     'source /root/nanobot-env/bin/activate && exec nanobot gateway'
 }
 
-echo "[$(date)] nanobot-loop started (pid $$)" | tee -a "$LOG"
+echo "[$(date)] nanobot-loop started (pid $$) distro=$NANOBOT_DISTRO" | tee -a "$LOG"
 
 while true; do
   echo "[$(date)] start nanobot gateway" | tee -a "$LOG"
@@ -21,7 +22,7 @@ while true; do
   rc=${PIPESTATUS[0]}
   echo "[$(date)] gateway exit rc=$rc (132=SIGILL); sleep 10s" | tee -a "$LOG"
   echo "[$(date)] --- debian /root/.nanobot/logs/gateway.log (last 25 lines) ---" | tee -a "$LOG"
-  proot-distro login debian -- /bin/bash -lc 'tail -n 25 /root/.nanobot/logs/gateway.log 2>/dev/null' 2>&1 | tee -a "$LOG" || true
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc 'tail -n 25 /root/.nanobot/logs/gateway.log 2>/dev/null' 2>&1 | tee -a "$LOG" || true
   echo "[$(date)] hint: collect-nanobot-logs — use a real phone if emulator keeps rc=132" | tee -a "$LOG"
   sleep 10
 done

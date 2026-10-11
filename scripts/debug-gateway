@@ -3,9 +3,11 @@
 set -euo pipefail
 export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
 export PROOT_NO_SECCOMP=1
+# shellcheck source=/dev/null
+source "$HOME/bin/nanobot-distro.sh"
 
-echo "Debian nanobot + Telegram check (redact output if you share logs)"
-proot-distro login debian -- /bin/bash -lc '
+echo "Debian ($NANOBOT_DISTRO) nanobot + Telegram check (redact output if you share logs)"
+proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc '
 set -euo pipefail
 source /root/nanobot-env/bin/activate
 command -v nanobot

@@ -2,6 +2,8 @@
 # Bundle sanitized diagnostics for debugging (safe to share — secrets redacted).
 set -euo pipefail
 export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
+# shellcheck source=/dev/null
+source "$HOME/bin/nanobot-distro.sh"
 
 OUT_DIR="$HOME/nanobot-logs"
 STAMP="$(date '+%Y%m%d-%H%M%S')"
@@ -45,7 +47,7 @@ section "Debian / Nanobot (secrets redacted)"
 if [[ ! -f "$DEBIAN_SCRIPT" ]]; then
   echo "Missing collect-debian-inner.sh next to collect-nanobot-logs"
 else
-  proot-distro login debian -- /bin/bash "$DEBIAN_SCRIPT"
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash "$DEBIAN_SCRIPT"
 fi
 
 section "Done"

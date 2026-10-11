@@ -5,6 +5,9 @@ set -euo pipefail
 # Override before curl|bash if your clone URL differs:
 DEFAULT_REPO="${NANOBOT_ANDROID_REPO:-https://github.com/gianfrancodemarco/nanobot-android-termux.git}"
 INSTALL_DIR="${NANOBOT_ANDROID_DIR:-$HOME/nanobot-android-termux}"
+# Proot-distro container name. Default debian. Use e.g. NANOBOT_DISTRO=nanobot for a
+# second rootfs: proot-distro install debian --override-alias nanobot (leaves debian untouched).
+NANOBOT_DISTRO="${NANOBOT_DISTRO:-}"
 TOTAL_STEPS=9
 STEP=0
 SETUP_LOG=""
@@ -106,20 +109,23 @@ termux_bootstrap() {
 }
 
 ensure_debian() {
-  if proot-distro list 2>/dev/null | grep -q '^debian$'; then
-    log "Debian rootfs already installed"
+  local d="$NANOBOT_DISTRO"
+  if proot-distro list 2>/dev/null | grep -Fxq "$d"; then
+    log "Proot distro '$d' already installed"
     return 0
   fi
-  log "Installing Debian via proot-distro"
-  # Do not pipe `yes` here: with pipefail, yes exits 141 (SIGPIPE) after install
-  # finishes and the whole setup script stops before the next step.
-  proot-distro install debian
-  log "Debian rootfs ready"
+  log "Installing Debian as proot alias '$d'"
+  if [[ "$d" == "debian" ]]; then
+    proot-distro install debian
+  else
+    proot-distro install debian --override-alias "$d"
+  fi
+  log "Proot distro '$d' ready"
 }
 
 debian_setup() {
   log "Nanobot venv and packages inside Debian"
-  proot-distro login debian -- /bin/bash -lc '
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc '
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export PIP_NO_INPUT=1
@@ -158,7 +164,7 @@ echo "nanobot: $(nanobot --version 2>/dev/null || nanobot --help 2>&1 | head -1)
 
 install_config_example() {
   local example="$1"
-  proot-distro login debian -- /bin/bash -lc "
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc "
 set -euo pipefail
 mkdir -p /root/.nanobot
 if [[ ! -f /root/.nanobot/config.json ]]; then
@@ -179,6 +185,9 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/debug-gateway" "$HOME/bin/debug-gateway"
   install -m 700 "$repo/scripts/collect-nanobot-logs" "$HOME/bin/collect-nanobot-logs"
   install -m 700 "$repo/scripts/collect-debian-inner.sh" "$HOME/bin/collect-debian-inner.sh"
+  install -m 644 "$repo/scripts/nanobot-distro.sh" "$HOME/bin/nanobot-distro.sh"
+  printf '%s\n' "$NANOBOT_DISTRO" >"$HOME/.nanobot-distro"
+  log "Saved proot alias to ~/.nanobot-distro ($NANOBOT_DISTRO)"
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
   if ! grep -q 'HOME/bin' "$HOME/.bashrc" 2>/dev/null; then
     printf '\n# nanobot-android-termux\nexport PATH="$HOME/bin:$PATH"\n' >>"$HOME/.bashrc"
@@ -190,7 +199,7 @@ install_termux_scripts() {
 verify_install() {
   log "Checking ~/bin/nanobot-loop and nanobot in Debian venv"
   [[ -x "$HOME/bin/nanobot-loop" ]] || die "Missing ~/bin/nanobot-loop (setup did not finish step 8)"
-  proot-distro login debian -- /bin/bash -lc '
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc '
 set -euo pipefail
 test -d /root/nanobot-env
 source /root/nanobot-env/bin/activate
@@ -207,8 +216,8 @@ configure_secrets() {
     return 0
   fi
 
-  if proot-distro login debian -- /bin/bash -lc 'test -f /root/.nanobot/config.json'; then
-    if ! proot-distro login debian -- /bin/bash -lc 'grep -q PASTE_YOUR_ /root/.nanobot/config.json 2>/dev/null'; then
+  if proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc 'test -f /root/.nanobot/config.json'; then
+    if ! proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc 'grep -q PASTE_YOUR_ /root/.nanobot/config.json 2>/dev/null'; then
       log "Config already has secrets; skipping key prompts"
       return 0
     fi
@@ -217,7 +226,7 @@ configure_secrets() {
   log "Prompting for OpenAI API key and Telegram bot token (hidden input)"
   log "Using defaults: chat model gpt-4.1-mini, Whisper language it"
 
-  proot-distro login debian -- /bin/bash -lc '
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc '
 set -euo pipefail
 CFG=/root/.nanobot/config.json
 [[ -f "$CFG" ]] || { echo "missing $CFG" >&2; exit 1; }
@@ -289,7 +298,7 @@ Manual steps Android cannot automate:
      termux-app_matching-key_universal-debug.apk then termux-boot-app_v0.8.1-boot-fix_debug.apk; open Boot once.
 
 Start gateway now (foreground test):
-  proot-distro login debian
+  proot-distro login ${NANOBOT_DISTRO}
   source /root/nanobot-env/bin/activate
   nanobot gateway
 
@@ -313,6 +322,13 @@ main() {
     die "Run this script in Termux on Android."
 
   init_logging
+
+  if [[ -z "$NANOBOT_DISTRO" ]] && [[ -f "$HOME/.nanobot-distro" ]]; then
+    NANOBOT_DISTRO="$(tr -d '[:space:]' <"$HOME/.nanobot-distro")"
+  fi
+  NANOBOT_DISTRO="${NANOBOT_DISTRO:-debian}"
+  export NANOBOT_DISTRO
+  log "Proot distro alias: $NANOBOT_DISTRO (set NANOBOT_DISTRO=nanobot before setup for a separate rootfs)"
 
   step "Locate or clone installer repo"
   ensure_repo_files
