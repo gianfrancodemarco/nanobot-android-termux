@@ -162,6 +162,11 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/nanobot-loop" "$HOME/bin/nanobot-loop"
   install -m 700 "$repo/scripts/start-nanobot-host" "$HOME/bin/start-nanobot-host"
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
+  if ! grep -q 'HOME/bin' "$HOME/.bashrc" 2>/dev/null; then
+    printf '\n# nanobot-android-termux\nexport PATH="$HOME/bin:$PATH"\n' >>"$HOME/.bashrc"
+    log "Added ~/bin to PATH in ~/.bashrc (open a new Termux session or: source ~/.bashrc)"
+  fi
+  export PATH="$HOME/bin:$PATH"
 }
 
 verify_install() {
@@ -271,7 +276,8 @@ Start gateway now (foreground test):
   nanobot gateway
 
 Or start gateway in tmux (recommended — replaces an old nanobot-host session if needed):
-  start-nanobot-host
+  ~/bin/start-nanobot-host
+  # or from repo: ./start-nanobot-host
 
   The pane shows gateway output; if it looks idle, tail -f ~/nanobot-logs/gateway.log
   Do not run: tmux new -s nanobot-host ...  (fails if session already exists)
