@@ -5,9 +5,26 @@ set -euo pipefail
 # Override before curl|bash if your clone URL differs:
 DEFAULT_REPO="${NANOBOT_ANDROID_REPO:-https://github.com/gianfrancodemarco/nanobot-android-termux.git}"
 INSTALL_DIR="${NANOBOT_ANDROID_DIR:-$HOME/nanobot-android-termux}"
+TOTAL_STEPS=8
+STEP=0
+SETUP_LOG=""
 
-log() { printf '==> %s\n' "$*"; }
-die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+export DEBIAN_FRONTEND=noninteractive
+export GIT_TERMINAL_PROMPT=0
+export PIP_NO_INPUT=1
+export PIP_ROOT_USER_ACTION=ignore
+
+log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
+step() { STEP=$((STEP + 1)); log "Step ${STEP}/${TOTAL_STEPS}: $*"; }
+die() { log "ERROR: $*"; exit 1; }
+
+init_logging() {
+  mkdir -p "$HOME/nanobot-logs"
+  SETUP_LOG="$HOME/nanobot-logs/setup.log"
+  printf '\n===== setup %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S')" >>"$SETUP_LOG"
+  exec > >(tee -a "$SETUP_LOG") 2>&1
+  log "Installer log: $SETUP_LOG"
+}
 
 script_dir() {
   if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
@@ -22,6 +39,7 @@ ensure_repo_files() {
   dir="$(script_dir)"
   if [[ -f "$dir/config/config.json.example" && -f "$dir/scripts/nanobot-loop" ]]; then
     INSTALL_DIR="$dir"
+    log "Using repo at $INSTALL_DIR"
     return 0
   fi
   log "Fetching repo into $INSTALL_DIR"
@@ -46,7 +64,7 @@ check_termux_arch() {
 }
 
 termux_bootstrap() {
-  log "Termux packages"
+  log "Installing Termux packages (non-interactive)"
   pkg update -y
   pkg upgrade -y
   pkg install -y proot-distro tmux git curl
@@ -57,8 +75,8 @@ ensure_debian() {
     log "Debian rootfs already installed"
     return 0
   fi
-  log "Installing Debian via proot-distro (first time only)"
-  proot-distro install debian
+  log "Installing Debian via proot-distro (non-interactive)"
+  yes | proot-distro install debian
 }
 
 debian_setup() {
@@ -66,8 +84,11 @@ debian_setup() {
   proot-distro login debian -- /bin/bash -lc '
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+export PIP_NO_INPUT=1
+export PIP_ROOT_USER_ACTION=ignore
+APT_OPTS="-y -qq -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 apt-get update -qq
-apt-get install -y -qq python3 python3-venv python3-pip git curl build-essential
+apt-get install $APT_OPTS python3 python3-venv python3-pip git curl build-essential
 
 if [[ ! -d /root/nanobot-env ]]; then
   python3 -m venv /root/nanobot-env
@@ -89,7 +110,7 @@ set -euo pipefail
 mkdir -p /root/.nanobot
 if [[ ! -f /root/.nanobot/config.json ]]; then
   cp '$example' /root/.nanobot/config.json
-  echo 'Wrote /root/.nanobot/config.json from example — edit API keys and Telegram token.'
+  echo 'Wrote /root/.nanobot/config.json from example'
 else
   echo 'Keeping existing /root/.nanobot/config.json'
 fi
@@ -98,30 +119,28 @@ fi
 
 install_termux_scripts() {
   local repo="$1"
-  log "Termux loop + boot scripts"
+  log "Installing Termux loop and boot scripts"
   mkdir -p "$HOME/bin" "$HOME/.termux/boot" "$HOME/nanobot-logs"
   install -m 700 "$repo/scripts/nanobot-loop" "$HOME/bin/nanobot-loop"
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
 }
 
-# OpenAI + Telegram + chat model + Whisper language (matches config/config.json.example).
+# Prompts only for OpenAI + Telegram keys; model/language use config defaults.
 configure_secrets() {
   if [[ ! -t 0 ]]; then
-    log "Non-interactive: config.json unchanged — edit /root/.nanobot/config.json in Debian"
+    log "Non-interactive session: skipping secret prompts (edit /root/.nanobot/config.json in Debian)"
     return 0
   fi
 
   if proot-distro login debian -- /bin/bash -lc 'test -f /root/.nanobot/config.json'; then
     if ! proot-distro login debian -- /bin/bash -lc 'grep -q PASTE_YOUR_ /root/.nanobot/config.json 2>/dev/null'; then
-      read -r -p "Config already has secrets. Re-enter OpenAI key and Telegram token? [y/N] " ans
-      [[ "$ans" =~ ^[yY]$ ]] || {
-        log "Keeping existing /root/.nanobot/config.json"
-        return 0
-      }
+      log "Config already has secrets; skipping key prompts"
+      return 0
     fi
   fi
 
-  log "Nanobot secrets (hidden input). Defaults: model gpt-4.1-mini, Whisper language it"
+  log "Prompting for OpenAI API key and Telegram bot token (hidden input)"
+  log "Using defaults: chat model gpt-4.1-mini, Whisper language it"
 
   proot-distro login debian -- /bin/bash -lc '
 set -euo pipefail
@@ -130,21 +149,18 @@ CFG=/root/.nanobot/config.json
 
 OPENAI_KEY=""
 while [[ -z "$OPENAI_KEY" ]]; do
-  read -r -s -p "OpenAI API key: " OPENAI_KEY
+  read -r -s -p "OpenAI API key: " OPENAI_KEY < /dev/tty
   echo
 done
 
 TELEGRAM_TOKEN=""
 while [[ -z "$TELEGRAM_TOKEN" ]]; do
-  read -r -s -p "Telegram bot token: " TELEGRAM_TOKEN
+  read -r -s -p "Telegram bot token: " TELEGRAM_TOKEN < /dev/tty
   echo
 done
 
-read -r -p "Chat model [gpt-4.1-mini]: " CHAT_MODEL
-CHAT_MODEL=${CHAT_MODEL:-gpt-4.1-mini}
-
-read -r -p "Voice note language (Whisper) [it]: " TRANS_LANG
-TRANS_LANG=${TRANS_LANG:-it}
+CHAT_MODEL=gpt-4.1-mini
+TRANS_LANG=it
 
 export OPENAI_KEY TELEGRAM_TOKEN CHAT_MODEL TRANS_LANG
 python3 <<'"'"'PY'"'"'
@@ -188,7 +204,7 @@ echo "Wrote $CFG (mode 600)"
 }
 
 print_next_steps() {
-  cat <<'EOF'
+  cat <<EOF
 
 Done.
 
@@ -206,6 +222,7 @@ Or host session + loop:
   tmux new -s nanobot-host ~/bin/nanobot-loop
 
 Logs:
+  tail -f ~/nanobot-logs/setup.log
   tail -f ~/nanobot-logs/gateway.log
   tail -f ~/nanobot-logs/boot.log
 
@@ -216,16 +233,35 @@ main() {
   [[ "$(uname -o 2>/dev/null || true)" == *Android* ]] || [[ -d /data/data/com.termux ]] || \
     die "Run this script in Termux on Android."
 
+  init_logging
+
+  step "Locate or clone installer repo"
   ensure_repo_files
   REPO="$INSTALL_DIR"
 
+  step "Check Termux is aarch64"
   check_termux_arch
+
+  step "Install Termux packages"
   termux_bootstrap
+
+  step "Ensure Debian rootfs (proot-distro)"
   ensure_debian
+
+  step "Install Nanobot inside Debian"
   debian_setup
+
+  step "Install Nanobot config template"
   install_config_example "$REPO/config/config.json.example"
+
+  step "Configure API keys (prompt if needed)"
   configure_secrets
+
+  step "Install gateway loop and boot scripts"
   install_termux_scripts "$REPO"
+
+  step "Finish"
+  log "Setup complete"
   print_next_steps
 }
 

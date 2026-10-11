@@ -53,10 +53,11 @@ bash setup.sh
 3. Installs **Debian** rootfs if missing  
 4. Creates `/root/nanobot-env`, installs **nanobot-ai** (and binary wheels for **rapidfuzz**)  
 5. Copies `config/config.json.example` → `/root/.nanobot/config.json` if none exists  
-6. **Interactive (tmux):** prompts for **OpenAI API key**, **Telegram bot token**, optional **chat model** (default `gpt-4.1-mini`) and **Whisper language** (default `it`), then patches config (mode `600`)  
-7. Installs `~/bin/nanobot-loop` and `~/.termux/boot/00-start-nanobot`
+6. **Interactive (tmux):** prompts only for **OpenAI API key** and **Telegram bot token** (hidden); chat model `gpt-4.1-mini` and Whisper language `it` are applied automatically  
+7. Installs `~/bin/nanobot-loop` and `~/.termux/boot/00-start-nanobot`  
+8. Writes a timestamped **Step N/8** transcript to `~/nanobot-logs/setup.log` (all command output via `tee`)
 
-Secrets stay on the device; only the example config is in git. Non-interactive runs (`curl | bash`) skip prompts — edit config in Debian afterward.
+Secrets stay on the device; only the example config is in git. Non-interactive runs (`curl | bash`) skip key prompts — edit config in Debian afterward. Package installs use `-y` / non-interactive flags throughout.
 
 ## Layout
 
@@ -72,7 +73,8 @@ Secrets stay on the device; only the example config is in git. Non-interactive r
 - Whitelist **Termux** in battery / background settings.  
 - **Termux:Boot** APK must be installed and opened once (see APK table above).  
 - Edit config inside Debian: `proot-distro login debian` → `/root/.nanobot/config.json`  
-- Test: `tmux new -s nanobot-host ~/bin/nanobot-loop` → `tail -f ~/nanobot-logs/gateway.log`
+- Test: `tmux new -s nanobot-host ~/bin/nanobot-loop` → `tail -f ~/nanobot-logs/gateway.log`  
+- Installer trace: `tail -f ~/nanobot-logs/setup.log`
 
 ## License
 
