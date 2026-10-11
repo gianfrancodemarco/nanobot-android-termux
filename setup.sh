@@ -5,7 +5,7 @@ set -euo pipefail
 # Override before curl|bash if your clone URL differs:
 DEFAULT_REPO="${NANOBOT_ANDROID_REPO:-https://github.com/gianfrancodemarco/nanobot-android-termux.git}"
 INSTALL_DIR="${NANOBOT_ANDROID_DIR:-$HOME/nanobot-android-termux}"
-TOTAL_STEPS=8
+TOTAL_STEPS=9
 STEP=0
 SETUP_LOG=""
 
@@ -125,6 +125,19 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/00-start-nanobot" "$HOME/.termux/boot/00-start-nanobot"
 }
 
+verify_install() {
+  log "Checking ~/bin/nanobot-loop and nanobot in Debian venv"
+  [[ -x "$HOME/bin/nanobot-loop" ]] || die "Missing ~/bin/nanobot-loop (setup did not finish step 8)"
+  proot-distro login debian -- /bin/bash -lc '
+set -euo pipefail
+test -d /root/nanobot-env
+source /root/nanobot-env/bin/activate
+command -v nanobot >/dev/null
+nanobot --version 2>/dev/null || true
+' || die "Nanobot not installed in /root/nanobot-env — see setup.log for apt/pip errors"
+  log "Verify OK"
+}
+
 # Prompts only for OpenAI + Telegram keys; model/language use config defaults.
 configure_secrets() {
   if [[ ! -t 0 ]]; then
@@ -218,7 +231,7 @@ Start gateway now (foreground test):
   source /root/nanobot-env/bin/activate
   nanobot gateway
 
-Or host session + loop:
+Or host session + loop (if tmux prints [exited], run ~/bin/nanobot-loop in foreground to see the error):
   tmux new -s nanobot-host ~/bin/nanobot-loop
 
 Logs:
@@ -259,6 +272,9 @@ main() {
 
   step "Install gateway loop and boot scripts"
   install_termux_scripts "$REPO"
+
+  step "Verify Nanobot and loop script"
+  verify_install
 
   step "Finish"
   log "Setup complete"
