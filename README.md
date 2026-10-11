@@ -55,7 +55,7 @@ bash setup.sh
 5. Copies `config/config.json.example` → `/root/.nanobot/config.json` if none exists  
 6. **Interactive (tmux):** prompts only for **OpenAI API key** and **Telegram bot token** (hidden); chat model `gpt-4.1-mini` and Whisper language `it` are applied automatically  
 7. Installs `~/bin/nanobot-loop` and `~/.termux/boot/00-start-nanobot`  
-8. Writes a timestamped **Step N/8** transcript to `~/nanobot-logs/setup.log` (all command output via `tee`)
+8. Writes a timestamped **STEP N/9** transcript to `~/nanobot-logs/setup.log` (banner per step + all command output via `tee`)
 
 Secrets stay on the device; only the example config is in git. Non-interactive runs (`curl | bash`) skip key prompts — edit config in Debian afterward. Package installs use `-y` / non-interactive flags throughout.
 

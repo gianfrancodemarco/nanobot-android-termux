@@ -14,16 +14,51 @@ export GIT_TERMINAL_PROMPT=0
 export PIP_NO_INPUT=1
 export PIP_ROOT_USER_ACTION=ignore
 
-log() { printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
-step() { STEP=$((STEP + 1)); log "Step ${STEP}/${TOTAL_STEPS}: $*"; }
-die() { log "ERROR: $*"; exit 1; }
+if [[ -t 1 ]]; then
+  _C_BOLD=$'\033[1m'
+  _C_CYAN=$'\033[36m'
+  _C_GREEN=$'\033[32m'
+  _C_RED=$'\033[31m'
+  _C_RESET=$'\033[0m'
+else
+  _C_BOLD= _C_CYAN= _C_GREEN= _C_RED= _C_RESET=
+fi
+
+_hr() { printf '%s\n' '============================================================'; }
+
+log() { printf '[%s]   · %s\n' "$(date '+%H:%M:%S')" "$*"; }
+
+step() {
+  STEP=$((STEP + 1))
+  printf '\n'
+  _hr
+  printf '%s[%s] STEP %s / %s%s\n' "$_C_BOLD" "$(date '+%H:%M:%S')" "$STEP" "$TOTAL_STEPS" "$_C_RESET"
+  printf '%s  %s%s\n' "$_C_CYAN" "$*" "$_C_RESET"
+  _hr
+  printf '\n'
+}
+
+die() {
+  printf '\n'
+  _hr
+  printf '%s[%s] SETUP FAILED%s\n' "$_C_RED" "$(date '+%H:%M:%S')" "$_C_RESET"
+  printf '%s  %s%s\n' "$_C_RED" "$*" "$_C_RESET"
+  _hr
+  printf '\n'
+  exit 1
+}
 
 init_logging() {
   mkdir -p "$HOME/nanobot-logs"
   SETUP_LOG="$HOME/nanobot-logs/setup.log"
   printf '\n===== setup %s =====\n' "$(date '+%Y-%m-%d %H:%M:%S')" >>"$SETUP_LOG"
   exec > >(tee -a "$SETUP_LOG") 2>&1
-  log "Installer log: $SETUP_LOG"
+  printf '\n'
+  _hr
+  printf '%s  Nanobot Android installer%s\n' "$_C_BOLD" "$_C_RESET"
+  printf '  Log file: %s\n' "$HOME/nanobot-logs/setup.log"
+  _hr
+  printf '\n'
 }
 
 script_dir() {
@@ -277,7 +312,11 @@ main() {
   verify_install
 
   step "Finish"
-  log "Setup complete"
+  printf '\n'
+  _hr
+  printf '%s[%s] SETUP COMPLETE (%s/%s)%s\n' "$_C_GREEN" "$(date '+%H:%M:%S')" "$STEP" "$TOTAL_STEPS" "$_C_RESET"
+  _hr
+  printf '\n'
   print_next_steps
 }
 
