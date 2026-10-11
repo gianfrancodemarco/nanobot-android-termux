@@ -127,9 +127,24 @@ export PIP_ROOT_USER_ACTION=ignore
 APT_OPTS="-y -qq -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"
 apt-get update -qq
 apt-get install $APT_OPTS python3 python3-venv python3-pip git curl build-essential
+apt-get install $APT_OPTS python3.12 python3.12-venv 2>/dev/null || true
+apt-get install $APT_OPTS python3.11 python3.11-venv 2>/dev/null || true
+
+PY=python3
+for cand in python3.12 python3.11 python3; do
+  if command -v "$cand" >/dev/null 2>&1; then
+    PY=$cand
+    break
+  fi
+done
+echo "Using $PY ($($PY --version 2>&1))"
+
+if [[ -d /root/nanobot-env && "${NANOBOT_RECREATE_VENV:-}" == 1 ]]; then
+  rm -rf /root/nanobot-env
+fi
 
 if [[ ! -d /root/nanobot-env ]]; then
-  python3 -m venv /root/nanobot-env
+  "$PY" -m venv /root/nanobot-env
 fi
 # shellcheck disable=SC1091
 source /root/nanobot-env/bin/activate
