@@ -27,8 +27,8 @@ while true; do
   run_gateway_in_debian 2>&1 | tee -a "$LOG"
   rc=${PIPESTATUS[0]}
   echo "[$(date)] gateway exit rc=$rc; sleep 10s" | tee -a "$LOG"
-  if [[ "$rc" -eq 0 ]]; then
-    echo "[$(date)] hint: if this repeats, run debug-gateway and check /root/.nanobot/logs/gateway.log in Debian" | tee -a "$LOG"
-  fi
+  echo "[$(date)] --- debian /root/.nanobot/logs/gateway.log (last 25 lines) ---" | tee -a "$LOG"
+  proot-distro login debian -- /bin/bash -lc 'tail -n 25 /root/.nanobot/logs/gateway.log 2>/dev/null' 2>&1 | tee -a "$LOG" || true
+  echo "[$(date)] hint: run collect-nanobot-logs and share the report file" | tee -a "$LOG"
   sleep 10
 done

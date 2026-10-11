@@ -1,0 +1,96 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Bundle sanitized diagnostics for debugging (safe to share — secrets redacted).
+set -euo pipefail
+export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
+
+OUT_DIR="$HOME/nanobot-logs"
+STAMP="$(date '+%Y%m%d-%H%M%S')"
+REPORT="$OUT_DIR/debug-report-${STAMP}.txt"
+
+mkdir -p "$OUT_DIR"
+exec > >(tee "$REPORT") 2>&1
+
+section() {
+  printf '\n\n======== %s ========\n\n' "$*"
+}
+
+section "nanobot-android-termux debug report ${STAMP}"
+
+section "Termux / device"
+date
+uname -a
+echo "uname -m: $(uname -m)"
+echo "dpkg arch: $(dpkg --print-architecture 2>/dev/null || echo n/a)"
+command -v proot-distro >/dev/null && proot-distro --version 2>/dev/null || true
+command -v proot-distro >/dev/null && proot-distro list 2>/dev/null || true
+pkg show proot proot-distro 2>/dev/null | grep -E '^Version:' || true
+
+section "Termux install log (last 120 lines)"
+tail -n 120 "$OUT_DIR/setup.log" 2>/dev/null || echo "(no setup.log)"
+
+section "Termux gateway.log (last 80 lines)"
+tail -n 80 "$OUT_DIR/gateway.log" 2>/dev/null || echo "(no gateway.log)"
+
+section "Termux boot.log (last 40 lines)"
+tail -n 40 "$OUT_DIR/boot.log" 2>/dev/null || echo "(no boot.log)"
+
+section "Debian / Nanobot (secrets redacted)"
+proot-distro login debian -- /bin/bash -lc '
+set +e
+source /root/nanobot-env/bin/activate 2>/dev/null
+echo "nanobot: $(command -v nanobot 2>/dev/null || echo missing)"
+nanobot --version 2>/dev/null || true
+echo "--- curl api.telegram.org ---"
+curl -fsS -o /dev/null -w "HTTP %{http_code}\n" --connect-timeout 15 https://api.telegram.org 2>&1 || echo "curl failed"
+echo "--- getMe (ok/error only, token not printed) ---"
+python3 <<'"'"'PY'"'"'
+import json, urllib.request, urllib.error, os
+
+path = "/root/.nanobot/config.json"
+try:
+    with open(path, encoding="utf-8") as f:
+        cfg = json.load(f)
+except OSError as e:
+    print("config:", e)
+    cfg = {}
+
+token = (cfg.get("channels") or {}).get("telegram", {}).get("token") or ""
+if not token or "PASTE" in token:
+    print("telegram token: missing or placeholder")
+else:
+    url = f"https://api.telegram.org/bot{token}/getMe"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as r:
+            body = json.loads(r.read().decode())
+        print("getMe ok:", body.get("ok"), "username:", (body.get("result") or {}).get("username"))
+    except urllib.error.HTTPError as e:
+        print("getMe HTTP", e.code)
+    except Exception as e:
+        print("getMe failed:", type(e).__name__, e)
+
+print("--- config.json (redacted) ---")
+def redact(obj):
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            lk = k.lower()
+            if lk in ("apikey", "token", "password", "secret"):
+                out[k] = "REDACTED" if v else v
+            else:
+                out[k] = redact(v)
+        return out
+    if isinstance(obj, list):
+        return [redact(x) for x in obj]
+    return obj
+
+print(json.dumps(redact(cfg), indent=2))
+PY
+echo "--- /root/.nanobot/logs/gateway.log (last 60 lines) ---"
+tail -n 60 /root/.nanobot/logs/gateway.log 2>/dev/null || echo "(no debian gateway.log)"
+echo "--- pip show nanobot-ai ---"
+pip show nanobot-ai 2>/dev/null | grep -E '^(Name|Version|Location):' || true
+'
+
+section "Done"
+echo "Report saved to: $REPORT"
+echo "Share this file (tokens already redacted in config section)."

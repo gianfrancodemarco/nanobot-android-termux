@@ -81,6 +81,15 @@ If `gateway.log` shows *Starting nanobot gateway* → *Registered 23 tools* → 
 
 Update Termux packages if proot misbehaves: `pkg upgrade -y proot proot-distro`.
 
+**Shareable log bundle** (stops nothing; redacts API keys/tokens in config):
+
+```bash
+tmux kill-session -t nanobot-host 2>/dev/null   # optional: stop the loop first
+~/bin/collect-nanobot-logs
+```
+
+Output: `~/nanobot-logs/debug-report-YYYYMMDD-HHMMSS.txt` — paste or send that file.
+
 ## After install
 
 - Whitelist **Termux** in battery / background settings.  
