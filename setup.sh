@@ -110,8 +110,11 @@ ensure_debian() {
     log "Debian rootfs already installed"
     return 0
   fi
-  log "Installing Debian via proot-distro (non-interactive)"
-  yes | proot-distro install debian
+  log "Installing Debian via proot-distro"
+  # Do not pipe `yes` here: with pipefail, yes exits 141 (SIGPIPE) after install
+  # finishes and the whole setup script stops before the next step.
+  proot-distro install debian
+  log "Debian rootfs ready"
 }
 
 debian_setup() {
