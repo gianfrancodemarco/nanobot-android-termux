@@ -1,0 +1,20 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Re-pull the nanobot source tarball (setup.sh NANOBOT_SOURCE_URL) and restart the gateway.
+set -euo pipefail
+export PROOT_NO_SECCOMP=1
+# shellcheck source=/dev/null
+source "$HOME/bin/nanobot-distro.sh"
+
+URL_FILE="$HOME/.nanobot-source-url"
+URL="${NANOBOT_SOURCE_URL:-$(cat "$URL_FILE" 2>/dev/null || true)}"
+[[ -n "$URL" ]] || { echo "No source URL: run setup.sh with NANOBOT_SOURCE_URL first." >&2; exit 1; }
+
+proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc "
+set -euo pipefail
+source /root/nanobot-env/bin/activate
+rm -rf /root/nanobot-src && mkdir -p /root/nanobot-src
+curl -fsSL '$URL' | tar -xz -C /root/nanobot-src
+python -m pip install -q -e /root/nanobot-src 'cryptography<47'
+nanobot --version 2>/dev/null || true
+"
+exec "$HOME/bin/start-nanobot-host"

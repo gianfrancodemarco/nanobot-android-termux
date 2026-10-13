@@ -8,6 +8,9 @@ INSTALL_DIR="${NANOBOT_ANDROID_DIR:-$HOME/nanobot-android-termux}"
 # Proot-distro container name. Default debian. Use e.g. NANOBOT_DISTRO=nanobot for a
 # second rootfs: proot-distro install debian --override-alias nanobot (leaves debian untouched).
 NANOBOT_DISTRO="${NANOBOT_DISTRO:-}"
+# Install nanobot from a source tarball URL instead of PyPI. Unpacked to /root/nanobot-src,
+# then pip install -e. Re-pull later with update-nanobot-src.
+NANOBOT_SOURCE_URL="${NANOBOT_SOURCE_URL:-}"
 TOTAL_STEPS=9
 STEP=0
 SETUP_LOG=""
@@ -103,8 +106,8 @@ check_termux_arch() {
 
 termux_bootstrap() {
   log "Installing Termux packages (non-interactive)"
+  # No `pkg upgrade`: it replaces bash/termux-exec under the running script and kills the session.
   pkg update -y
-  pkg upgrade -y
   pkg install -y proot-distro tmux git curl
 }
 
@@ -125,7 +128,7 @@ ensure_debian() {
 
 debian_setup() {
   log "Nanobot venv and packages inside Debian"
-  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc '
+  proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc "export NANOBOT_SOURCE_URL='$NANOBOT_SOURCE_URL' NANOBOT_RECREATE_VENV='${NANOBOT_RECREATE_VENV:-}'; "'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export PIP_NO_INPUT=1
@@ -156,7 +159,16 @@ fi
 source /root/nanobot-env/bin/activate
 python -m pip install -q --upgrade pip
 python -m pip install -q --only-binary=:all: rapidfuzz
-python -m pip install -q nanobot-ai
+# cryptography 50.x wheels die with SIGILL (rc=132) under proot; 43-46 import fine.
+python -m pip install -q --only-binary=:all: "cryptography<47"
+if [[ -n "${NANOBOT_SOURCE_URL:-}" ]]; then
+  echo "Installing nanobot from $NANOBOT_SOURCE_URL"
+  rm -rf /root/nanobot-src && mkdir -p /root/nanobot-src
+  curl -fsSL "$NANOBOT_SOURCE_URL" | tar -xz -C /root/nanobot-src
+  python -m pip install -q -e /root/nanobot-src
+else
+  python -m pip install -q nanobot-ai
+fi
 command -v nanobot >/dev/null
 echo "nanobot: $(nanobot --version 2>/dev/null || nanobot --help 2>&1 | head -1)"
 '
@@ -184,6 +196,12 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/start-nanobot-host" "$HOME/bin/start-nanobot-host"
   install -m 700 "$repo/scripts/debug-gateway" "$HOME/bin/debug-gateway"
   install -m 700 "$repo/scripts/collect-nanobot-logs" "$HOME/bin/collect-nanobot-logs"
+  install -m 700 "$repo/scripts/update-nanobot-src" "$HOME/bin/update-nanobot-src"
+  if [[ -n "$NANOBOT_SOURCE_URL" ]]; then
+    printf '%s\n' "$NANOBOT_SOURCE_URL" >"$HOME/.nanobot-source-url"
+  else
+    rm -f "$HOME/.nanobot-source-url"
+  fi
   install -m 700 "$repo/scripts/collect-debian-inner.sh" "$HOME/bin/collect-debian-inner.sh"
   install -m 644 "$repo/scripts/nanobot-distro.sh" "$HOME/bin/nanobot-distro.sh"
   printf '%s\n' "$NANOBOT_DISTRO" >"$HOME/.nanobot-distro"
