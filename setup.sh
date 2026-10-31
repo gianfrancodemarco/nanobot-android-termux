@@ -52,11 +52,13 @@ echo "Using $PY ($($PY --version 2>&1))"
 [[ "$NANOBOT_RECREATE_VENV" == 1 ]] && rm -rf /root/nanobot-env
 [[ -d /root/nanobot-env ]] || "$PY" -m venv /root/nanobot-env
 source /root/nanobot-env/bin/activate
+# cryptography 50.x wheels die with SIGILL under proot; 43-46 import fine. The venv pip.conf
+# applies the pin to every pip run, including the optional features nanobot installs at runtime.
+echo "cryptography<47" >/root/nanobot-env/constraints.txt
+printf "[install]\nconstraint = /root/nanobot-env/constraints.txt\n" >/root/nanobot-env/pip.conf
 python -m pip install -q --upgrade pip
 python -m pip install -q --only-binary=:all: rapidfuzz
-# cryptography 50.x wheels die with SIGILL (rc=132) under proot; 43-46 import fine.
-python -m pip install -q --only-binary=:all: "cryptography<47"
-python -m pip install -q nanobot-ai
+python -m pip install -q nanobot-ai "cryptography<47"
 echo "nanobot $(nanobot --version)"
 '
 }

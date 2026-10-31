@@ -74,7 +74,7 @@ Setup asks for your 🔑 **OpenAI API key** and 🤖 **Telegram bot token**. You
 ~/bin/nanobot-ctl start
 ```
 
-That's it. After a reboot, Termux:Boot starts the bot by itself.
+That's it. Message your bot on Telegram, or open the web UI on the phone at **http://127.0.0.1:8765/**. After a reboot, Termux:Boot starts the bot by itself.
 
 ## 🧰 `nanobot-ctl`
 

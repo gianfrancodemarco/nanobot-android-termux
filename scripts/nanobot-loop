@@ -11,6 +11,7 @@ while true; do
   echo "[$(date)] start nanobot gateway" | tee -a "$LOG"
   proot-distro login debian -- /bin/bash -lc \
     'source /root/nanobot-env/bin/activate && exec nanobot gateway' 2>&1 | tee -a "$LOG"
-  echo "[$(date)] gateway exit rc=${PIPESTATUS[0]} (132=SIGILL, try: nanobot-ctl debug); restart in 10s" | tee -a "$LOG"
+  # proot-distro returns 0 even when the gateway dies from a signal, so don't trust rc here.
+  echo "[$(date)] gateway exited (rc=${PIPESTATUS[0]}); restart in 10s. Crash loop? Run: nanobot-ctl debug" | tee -a "$LOG"
   sleep 10
 done

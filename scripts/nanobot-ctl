@@ -6,7 +6,7 @@ export PROOT_NO_SECCOMP=1
 
 SESSION=nanobot-host
 LOG="$HOME/nanobot-logs/gateway.log"
-# cryptography 50.x wheels die with SIGILL (rc=132) under proot; 43-46 import fine.
+# cryptography 50.x wheels die with SIGILL under proot; 43-46 import fine. Same pin as setup.sh.
 CRYPTO_PIN="cryptography<47"
 
 in_debian() {
@@ -50,7 +50,10 @@ case "${1:-}" in
   attach) exec tmux attach -t "$SESSION" ;;
   update)
     stop
+    # Rewrite the venv constraint too, so installs from older setups get the runtime pin.
     in_debian "echo \"Current: \$(nanobot --version)\"
+      echo '$CRYPTO_PIN' >/root/nanobot-env/constraints.txt
+      printf '[install]\nconstraint = /root/nanobot-env/constraints.txt\n' >/root/nanobot-env/pip.conf
       pip install -q -U nanobot-ai '$CRYPTO_PIN'
       echo \"After:   \$(nanobot --version)\"" || echo "Update failed; restarting the current version."
     start
