@@ -1,0 +1,28 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Upgrade nanobot-ai from PyPI in the Debian venv and restart the gateway.
+# Source-tarball installs (~/.nanobot-source-url) are handed to update-nanobot-src.
+set -euo pipefail
+export PROOT_NO_SECCOMP=1
+# shellcheck source=/dev/null
+source "$HOME/bin/nanobot-distro.sh"
+
+# The restart kills the nanobot-host session, which would kill this script too.
+if [[ -n "${TMUX:-}" && "$(tmux display-message -p '#S' 2>/dev/null)" == nanobot-host ]]; then
+  echo "Run update-nanobot outside the nanobot-host session (Ctrl+B then D to detach)." >&2
+  exit 1
+fi
+
+if [[ -s "$HOME/.nanobot-source-url" ]]; then
+  echo "Source install detected; running update-nanobot-src"
+  exec "$HOME/bin/update-nanobot-src"
+fi
+
+# cryptography 50.x wheels die with SIGILL (rc=132) under proot; keep the pin on upgrade.
+proot-distro login "$NANOBOT_DISTRO" -- /bin/bash -lc '
+set -euo pipefail
+source /root/nanobot-env/bin/activate
+echo "Before: $(nanobot --version 2>/dev/null || echo unknown)"
+python -m pip install -q -U nanobot-ai "cryptography<47"
+echo "After:  $(nanobot --version 2>/dev/null || echo unknown)"
+'
+exec "$HOME/bin/start-nanobot-host"

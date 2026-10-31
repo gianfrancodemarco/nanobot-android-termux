@@ -197,6 +197,7 @@ install_termux_scripts() {
   install -m 700 "$repo/scripts/debug-gateway" "$HOME/bin/debug-gateway"
   install -m 700 "$repo/scripts/collect-nanobot-logs" "$HOME/bin/collect-nanobot-logs"
   install -m 700 "$repo/scripts/update-nanobot-src" "$HOME/bin/update-nanobot-src"
+  install -m 700 "$repo/scripts/update-nanobot" "$HOME/bin/update-nanobot"
   if [[ -n "$NANOBOT_SOURCE_URL" ]]; then
     printf '%s\n' "$NANOBOT_SOURCE_URL" >"$HOME/.nanobot-source-url"
   else

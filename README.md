@@ -1,25 +1,54 @@
-# Nanobot on Android (Termux + Debian)
+# 🤖📱 Nanobot on Android
 
-Install [Nanobot](https://pypi.org/project/nanobot-ai/) in **proot Debian** on **ARM64 Termux**, with boot and loop scripts for a Telegram gateway on your phone.
+![Android](https://img.shields.io/badge/Android-ARM64-3DDC84?logo=android&logoColor=white)
+![Termux](https://img.shields.io/badge/Termux-proot%20Debian-000000?logo=gnubash&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-gateway-26A5E4?logo=telegram&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-Based on the [setup write-up](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md).
+Run [Nanobot](https://pypi.org/project/nanobot-ai/) as a Telegram bot on your phone. It runs 24/7 and starts again by itself after a reboot.
 
-## Prerequisites
+📝 Full story: [the setup write-up](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md)
 
-- **ARM64 Termux**: `uname -m` and `dpkg --print-architecture` both print `aarch64`.
-- Network on the device.
-- Two APKs from the **same release**, so the signing keys match (required for boot on Android 14+). The installer does not download them. Install Termux first, then Termux:Boot, and open each once.
+```mermaid
+flowchart TB
+    you(["👤 You"]) <-->|chat| tg["💬 Telegram"]
 
-| App | Asset |
+    subgraph phone["📱 Android phone · Termux"]
+        boot["⚡ Termux:Boot<br/><small>on every reboot</small>"] -->|starts| loop["🔁 nanobot-loop<br/><small>tmux · nanobot-host</small>"]
+        gw["🤖 nanobot gateway<br/><small>🐧 proot Debian · keys stay here</small>"]
+        loop -->|runs & restarts| gw
+    end
+
+    tg <-->|Bot API| gw
+    gw <-->|LLM + Whisper| ai["🧠 OpenAI"]
+
+    classDef ext fill:#E8F4FD,stroke:#26A5E4,stroke-width:2px,color:#0B3D5C
+    classDef ai fill:#F0EBFF,stroke:#7C5CFF,stroke-width:2px,color:#2E1A7A
+    classDef host fill:#FFF4E5,stroke:#F59E0B,stroke-width:2px,color:#5C3A00
+    classDef bot fill:#E7F8EE,stroke:#22A55A,stroke-width:2px,color:#0F4D2A
+    class you,tg ext
+    class ai ai
+    class boot,loop host
+    class gw bot
+
+    style phone fill:transparent,stroke:#3DDC84,stroke-width:3px,stroke-dasharray:6 4
+```
+
+## 1️⃣ Install the apps
+
+Install both APKs from the **same release**, so their signing keys match (Android 14+ needs this for boot). Install Termux first, then open each app once.
+
+| App | Download |
 | --- | --- |
-| **Termux** (matching-key) | [`termux-app_matching-key_universal-debug.apk`](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-app_matching-key_universal-debug.apk) |
-| **Termux:Boot** (boot-fix) | [`termux-boot-app_v0.8.1-boot-fix_debug.apk`](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-boot-app_v0.8.1-boot-fix_debug.apk) |
+| **Termux** | [termux-app_matching-key_universal-debug.apk](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-app_matching-key_universal-debug.apk) |
+| **Termux:Boot** | [termux-boot-app_v0.8.1-boot-fix_debug.apk](https://github.com/oswaldlow/termux-boot/releases/download/v0.8.1-boot-fix/termux-boot-app_v0.8.1-boot-fix_debug.apk) |
 
-Release page: [oswaldlow/termux-boot v0.8.1-boot-fix](https://github.com/oswaldlow/termux-boot/releases/tag/v0.8.1-boot-fix). The official [termux-app v0.119.0-beta.3](https://github.com/termux/termux-app/releases/tag/v0.119.0-beta.3) arm64 build uses a different signing key, so use it only without the boot-fix Termux:Boot.
+> [!IMPORTANT]
+> You need **64-bit** Termux: `uname -m` must print `aarch64`. Then allow Termux to run in the background in your battery settings.
 
-## Install
+## 2️⃣ Run the installer
 
-Run these as two separate blocks. Pasting `tmux new` together with other commands sends the rest of the paste into tmux.
+In Termux:
 
 ```bash
 pkg update -y && pkg install -y git tmux
@@ -34,69 +63,158 @@ cd nanobot-android-termux
 ./setup.sh
 ```
 
-Setup prompts for your **OpenAI API key** and **Telegram bot token** (hidden input). It applies the defaults `gpt-4.1-mini` and Whisper language `it`. Non-interactive runs skip the prompts, so edit `/root/.nanobot/config.json` in Debian afterwards. Secrets stay on the device.
+> [!TIP]
+> Paste the two blocks separately. Anything pasted after `tmux new` ends up inside tmux.
 
-### Options
+Setup asks for your 🔑 **OpenAI API key** and 🤖 **Telegram bot token**. Your secrets stay on the phone.
+
+## 3️⃣ Start the bot
+
+```bash
+~/bin/start-nanobot-host
+```
+
+Detach with `Ctrl+B` then `D`. After a reboot, Termux:Boot starts the bot by itself.
+
+## 🧰 Everyday commands
+
+| I want to… | Run |
+| --- | --- |
+| ▶️ Start or restart the bot | `~/bin/start-nanobot-host` |
+| ⬆️ Update nanobot | `~/bin/update-nanobot` |
+| 👀 Watch the logs | `tail -f ~/nanobot-logs/gateway.log` |
+| 🐞 Debug a crash | `~/bin/debug-gateway` |
+| 📦 Share a log report | `~/bin/collect-nanobot-logs` |
+| ⚙️ Edit the config | `proot-distro login debian`, then edit `/root/.nanobot/config.json` |
+
+## ⬆️ Updating
+
+```bash
+~/bin/update-nanobot
+```
+
+```mermaid
+flowchart LR
+    run(["⬆️ update-nanobot"]) --> q{"Installed from<br/>a tarball?"}
+    q -->|no| pypi["📦 Upgrade nanobot-ai<br/><small>from PyPI · keeps cryptography&lt;47</small>"]
+    q -->|yes| src["📥 update-nanobot-src<br/><small>re-pulls the tarball</small>"]
+    pypi --> restart["🔁 Restart the gateway<br/><small>start-nanobot-host</small>"]
+    src --> restart
+
+    classDef start fill:#E8F4FD,stroke:#26A5E4,stroke-width:2px,color:#0B3D5C
+    classDef step fill:#FFF4E5,stroke:#F59E0B,stroke-width:2px,color:#5C3A00
+    classDef done fill:#E7F8EE,stroke:#22A55A,stroke-width:2px,color:#0F4D2A
+    class run start
+    class q,pypi,src step
+    class restart done
+```
+
+**No need to stop the bot first.** It keeps running during the upgrade, then the script restarts it: the old `nanobot-host` session is killed and a fresh one starts on the new version. Run it from a plain Termux shell, not from inside the `nanobot-host` session (detach with `Ctrl+B` then `D`).
+
+It prints the nanobot version before and after, then attaches to the new session. Your config and keys aren't touched.
+
+The `cryptography<47` pin matters: newer wheels crash under proot (see [`rc=132`](#-troubleshooting)).
+
+> [!NOTE]
+> `update-nanobot` updates **nanobot**, not this repo's scripts. To get new scripts, run `git pull && ./setup.sh` in the repo. Setup keeps your config and secrets.
+
+## 🩺 Troubleshooting
+
+<details>
+<summary><b>The gateway restarts every ~10 seconds</b></summary>
+
+1. Run `~/bin/debug-gateway` and watch for errors.
+2. In Debian, check `/root/.nanobot/logs/gateway.log` for Telegram or API errors.
+3. Test the token: `curl -s "https://api.telegram.org/bot<TOKEN>/getMe"` should return `"ok":true`.
+
+</details>
+
+<details>
+<summary><b><code>rc=132</code> (SIGILL)</b></summary>
+
+A native wheel is crashing under proot. The known case is `cryptography` 50.x. Setup and `update-nanobot` pin it below 47. On an older install, run `pip install "cryptography<47"` inside `/root/nanobot-env`.
+
+For another culprit, run `python -c "import <module>"` for each dependency and see which one dies.
+
+</details>
+
+<details>
+<summary><b><code>terminated with signal 4</code></b></summary>
+
+This line only means the proot session ended. The real reason is in the lines above it.
+
+</details>
+
+<details>
+<summary><b>proot misbehaves</b></summary>
+
+From a plain Termux shell (not inside `setup.sh`), run:
+
+```bash
+pkg upgrade -y proot proot-distro
+```
+
+</details>
+
+<details>
+<summary><b>Sharing a debug report</b></summary>
+
+```bash
+tmux kill-session -t nanobot-host 2>/dev/null   # optional
+~/bin/collect-nanobot-logs
+```
+
+Keys and tokens are redacted. The report goes to `~/nanobot-logs/debug-report-*.txt`.
+
+</details>
+
+## 🔧 Advanced
+
+<details>
+<summary><b>Setup options</b></summary>
 
 Set these before `./setup.sh`:
 
 | Variable | Effect |
 | --- | --- |
-| `NANOBOT_DISTRO=nanobot` | Install a second Debian rootfs under that alias and leave an existing `debian` untouched. Default is `debian`. |
-| `NANOBOT_SOURCE_URL=<url>` | Install nanobot from a source tarball (`pip install -e`) instead of PyPI. The URL is saved to `~/.nanobot-source-url`. |
+| `NANOBOT_DISTRO=nanobot` | Use a separate Debian rootfs and leave `debian` untouched. Then use that name with `proot-distro login`. |
+| `NANOBOT_SOURCE_URL=<url>` | Install from a source tarball instead of PyPI. `update-nanobot` then re-pulls the tarball. |
 | `NANOBOT_RECREATE_VENV=1` | Delete and recreate `/root/nanobot-env`. |
 
-To update an install from a tarball, re-publish it at the same URL and run `update-nanobot-src`. It reinstalls the source and restarts the gateway.
+Without a terminal, setup skips the key prompts, so edit the config afterwards. The defaults are model `gpt-4.1-mini` and Whisper language `it`.
 
-## What `setup.sh` does
+</details>
+
+<details>
+<summary><b>What <code>setup.sh</code> does</b></summary>
 
 1. Checks for aarch64 Termux.
 2. Installs `proot-distro`, `tmux`, `git` and `curl`.
-3. Installs the Debian rootfs if missing.
-4. Creates `/root/nanobot-env` and installs nanobot, pinning `cryptography<47` (see Troubleshooting).
-5. Copies `config/config.json.example` to `/root/.nanobot/config.json` if none exists.
-6. Prompts for the API key and bot token.
+3. Installs the Debian rootfs if it's missing.
+4. Creates `/root/nanobot-env` and installs nanobot.
+5. Writes `/root/.nanobot/config.json` from the example if none exists.
+6. Asks for the API key and bot token.
 7. Installs the scripts in `~/bin` and the Termux:Boot entry.
-8. Logs every step to `~/nanobot-logs/setup.log`.
+
+Everything is logged to `~/nanobot-logs/setup.log`.
+
+</details>
+
+<details>
+<summary><b>Scripts</b></summary>
 
 | Script | Role |
 | --- | --- |
-| `scripts/nanobot-loop` | Gateway restart loop |
-| `scripts/start-nanobot-host` | Start or restart the tmux session and attach |
-| `scripts/00-start-nanobot` | Termux:Boot entry |
-| `scripts/update-nanobot-src` | Re-pull the source tarball and restart the gateway |
-| `scripts/debug-gateway` | Run the gateway in the foreground with checks |
-| `scripts/collect-nanobot-logs` | Write a shareable, redacted log bundle |
+| `nanobot-loop` | Keeps restarting the gateway |
+| `start-nanobot-host` | (Re)starts the `nanobot-host` tmux session and attaches |
+| `00-start-nanobot` | Termux:Boot entry |
+| `update-nanobot` | Upgrades nanobot and restarts the gateway |
+| `update-nanobot-src` | Re-pulls the source tarball and restarts the gateway |
+| `debug-gateway` | Runs the gateway in the foreground with checks |
+| `collect-nanobot-logs` | Writes a redacted log report |
 
-## After install
+</details>
 
-- Allow Termux to run in the background in your battery settings.
-- Start the gateway with `~/bin/start-nanobot-host`. Detach with Ctrl+B then D.
-- After a reboot, Termux:Boot starts the gateway in the `nanobot-host` tmux session by itself. Check `~/nanobot-logs/boot.log`.
-- Logs: `~/nanobot-logs/gateway.log`, `setup.log` and `boot.log`.
-- Config: `proot-distro login debian`, then `/root/.nanobot/config.json`. Use your alias instead of `debian` if you set `NANOBOT_DISTRO`.
-
-## Troubleshooting
-
-If `gateway.log` shows *Registered 23 tools* and then the gateway exits every ~10s:
-
-1. Run `~/bin/debug-gateway` and watch for errors after startup.
-2. In Debian, read `/root/.nanobot/logs/gateway.log`. It often has Telegram or API errors.
-3. Check the token: `curl -s "https://api.telegram.org/bot<TOKEN>/getMe"` should return `"ok":true`.
-4. **`rc=132` (SIGILL)** is usually a native wheel that crashes under proot. The known case is `cryptography` 50.x, which setup pins below 47. On an older install, run `pip install "cryptography<47"` in `/root/nanobot-env`. For another culprit, run `python -c "import <module>"` per dependency in Debian and see which one dies.
-5. `proot info: vpid 1: terminated with signal 4` appears when the proot session ends. Look at the lines above it for why the gateway exited.
-
-If proot misbehaves, run `pkg upgrade -y proot proot-distro` from a plain Termux shell, not from inside `setup.sh`.
-
-For a shareable report, optionally stop the loop first, then collect the logs. Config keys and tokens are redacted.
-
-```bash
-tmux kill-session -t nanobot-host 2>/dev/null
-~/bin/collect-nanobot-logs
-```
-
-The report is written to `~/nanobot-logs/debug-report-YYYYMMDD-HHMMSS.txt`.
-
-## License
+## 📄 License
 
 MIT, see [LICENSE](LICENSE).
