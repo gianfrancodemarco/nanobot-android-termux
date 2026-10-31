@@ -1,2 +1,0 @@
-#!/data/data/com.termux/files/usr/bin/bash
-exec "$(cd "$(dirname "$0")" && pwd)/scripts/start-nanobot-host" "$@"

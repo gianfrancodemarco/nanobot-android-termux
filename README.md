@@ -71,147 +71,107 @@ Setup asks for your 🔑 **OpenAI API key** and 🤖 **Telegram bot token**. You
 ## 3️⃣ Start the bot
 
 ```bash
-~/bin/start-nanobot-host
+~/bin/nanobot-ctl start
 ```
 
-Detach with `Ctrl+B` then `D`. After a reboot, Termux:Boot starts the bot by itself.
+That's it. After a reboot, Termux:Boot starts the bot by itself.
 
-## 🧰 Everyday commands
+## 🧰 `nanobot-ctl`
+
+One command controls everything. Open a new Termux session after setup and it's on your PATH.
 
 | I want to… | Run |
 | --- | --- |
-| ▶️ Start or restart the bot | `~/bin/start-nanobot-host` |
-| ⬆️ Update nanobot | `~/bin/update-nanobot` |
-| 👀 Watch the logs | `tail -f ~/nanobot-logs/gateway.log` |
-| 🐞 Debug a crash | `~/bin/debug-gateway` |
-| 📦 Share a log report | `~/bin/collect-nanobot-logs` |
-| ⚙️ Edit the config | `proot-distro login debian`, then edit `/root/.nanobot/config.json` |
+| ▶️ Start or restart the bot | `nanobot-ctl start` |
+| ⏹️ Stop it (all of it) | `nanobot-ctl stop` |
+| 🟢 Check if it's running | `nanobot-ctl status` |
+| 👀 Watch the logs | `nanobot-ctl logs` |
+| 🖥️ See the live session | `nanobot-ctl attach` (leave with `Ctrl+B` then `D`) |
+| ⬆️ Update nanobot | `nanobot-ctl update` |
+| 🐞 See why it crashes | `nanobot-ctl debug` |
+| ⚙️ Edit the config | `nanobot-ctl config`, then `nanobot-ctl start` |
+
+> [!NOTE]
+> `stop` kills every process running in Debian, including gateways you started by hand and any Debian shell you have open. Run `nanobot-ctl` from plain Termux, not from inside Debian.
 
 ## ⬆️ Updating
 
 ```bash
-~/bin/update-nanobot
+nanobot-ctl update
 ```
 
 ```mermaid
 flowchart LR
-    run(["⬆️ update-nanobot"]) --> q{"Installed from<br/>a tarball?"}
-    q -->|no| pypi["📦 Upgrade nanobot-ai<br/><small>from PyPI · keeps cryptography&lt;47</small>"]
-    q -->|yes| src["📥 update-nanobot-src<br/><small>re-pulls the tarball</small>"]
-    pypi --> restart["🔁 Restart the gateway<br/><small>start-nanobot-host</small>"]
-    src --> restart
+    stop["⏹️ Stop every gateway"] --> up["📦 Upgrade nanobot-ai<br/><small>keeps cryptography&lt;47</small>"] --> start["▶️ Start the bot again"]
 
-    classDef start fill:#E8F4FD,stroke:#26A5E4,stroke-width:2px,color:#0B3D5C
     classDef step fill:#FFF4E5,stroke:#F59E0B,stroke-width:2px,color:#5C3A00
     classDef done fill:#E7F8EE,stroke:#22A55A,stroke-width:2px,color:#0F4D2A
-    class run start
-    class q,pypi,src step
-    class restart done
+    class stop,up step
+    class start done
 ```
 
-**No need to stop the bot first.** It keeps running during the upgrade, then the script restarts it: the old `nanobot-host` session is killed and a fresh one starts on the new version. Run it from a plain Termux shell, not from inside the `nanobot-host` session (detach with `Ctrl+B` then `D`).
+It prints the current version and the new one. Your config and keys aren't touched.
 
-It prints the nanobot version before and after, then attaches to the new session. Your config and keys aren't touched.
-
-The `cryptography<47` pin matters: newer wheels crash under proot (see [`rc=132`](#-troubleshooting)).
-
-> [!NOTE]
-> `update-nanobot` updates **nanobot**, not this repo's scripts. To get new scripts, run `git pull && ./setup.sh` in the repo. Setup keeps your config and secrets.
+To update **this repo's scripts**, run `git pull && ./setup.sh` in `~/nanobot-android-termux`. Setup keeps your config and keys.
 
 ## 🩺 Troubleshooting
 
 <details>
 <summary><b>The gateway restarts every ~10 seconds</b></summary>
 
-1. Run `~/bin/debug-gateway` and watch for errors.
-2. In Debian, check `/root/.nanobot/logs/gateway.log` for Telegram or API errors.
-3. Test the token: `curl -s "https://api.telegram.org/bot<TOKEN>/getMe"` should return `"ok":true`.
+1. Run `nanobot-ctl debug` and read the error.
+2. Test the token: `curl -s "https://api.telegram.org/bot<TOKEN>/getMe"` should return `"ok":true`.
 
 </details>
 
 <details>
 <summary><b><code>rc=132</code> (SIGILL)</b></summary>
 
-A native wheel is crashing under proot. The known case is `cryptography` 50.x. Setup and `update-nanobot` pin it below 47. On an older install, run `pip install "cryptography<47"` inside `/root/nanobot-env`.
+A native package is crashing under proot. The known case is `cryptography` 50.x, which setup and `update` pin below 47.
 
-For another culprit, run `python -c "import <module>"` for each dependency and see which one dies.
+Run `nanobot-ctl debug`. The crash dump's `site-packages/<package>/` lines name the package to pin.
 
 </details>
 
 <details>
-<summary><b><code>terminated with signal 4</code></b></summary>
+<summary><b><code>Address already in use</code></b></summary>
 
-This line only means the proot session ended. The real reason is in the lines above it.
+Another gateway is still running. Run `nanobot-ctl stop`, then start again.
 
 </details>
 
 <details>
 <summary><b>proot misbehaves</b></summary>
 
-From a plain Termux shell (not inside `setup.sh`), run:
-
-```bash
-pkg upgrade -y proot proot-distro
-```
-
-</details>
-
-<details>
-<summary><b>Sharing a debug report</b></summary>
-
-```bash
-tmux kill-session -t nanobot-host 2>/dev/null   # optional
-~/bin/collect-nanobot-logs
-```
-
-Keys and tokens are redacted. The report goes to `~/nanobot-logs/debug-report-*.txt`.
+From plain Termux, run `pkg upgrade -y proot proot-distro`.
 
 </details>
 
 ## 🔧 Advanced
 
 <details>
-<summary><b>Setup options</b></summary>
-
-Set these before `./setup.sh`:
-
-| Variable | Effect |
-| --- | --- |
-| `NANOBOT_DISTRO=nanobot` | Use a separate Debian rootfs and leave `debian` untouched. Then use that name with `proot-distro login`. |
-| `NANOBOT_SOURCE_URL=<url>` | Install from a source tarball instead of PyPI. `update-nanobot` then re-pulls the tarball. |
-| `NANOBOT_RECREATE_VENV=1` | Delete and recreate `/root/nanobot-env`. |
-
-Without a terminal, setup skips the key prompts, so edit the config afterwards. The defaults are model `gpt-4.1-mini` and Whisper language `it`.
-
-</details>
-
-<details>
 <summary><b>What <code>setup.sh</code> does</b></summary>
 
-1. Checks for aarch64 Termux.
-2. Installs `proot-distro`, `tmux`, `git` and `curl`.
-3. Installs the Debian rootfs if it's missing.
-4. Creates `/root/nanobot-env` and installs nanobot.
-5. Writes `/root/.nanobot/config.json` from the example if none exists.
-6. Asks for the API key and bot token.
-7. Installs the scripts in `~/bin` and the Termux:Boot entry.
+1. Installs `proot-distro`, `tmux`, `git` and `curl` in Termux.
+2. Installs Debian if it's missing.
+3. Creates `/root/nanobot-env` and installs nanobot.
+4. Writes `/root/.nanobot/config.json` from [the example](config/config.json.example) and asks for your keys. The defaults are model `gpt-4.1-mini` and Whisper language `it`.
+5. Installs `nanobot-ctl` and the Termux:Boot entry.
 
-Everything is logged to `~/nanobot-logs/setup.log`.
+It's safe to run again. Set `NANOBOT_RECREATE_VENV=1` to rebuild the Python environment from scratch. The log is in `~/nanobot-logs/setup.log`.
 
 </details>
 
 <details>
-<summary><b>Scripts</b></summary>
+<summary><b>Files</b></summary>
 
-| Script | Role |
+| File | Role |
 | --- | --- |
-| `nanobot-loop` | Keeps restarting the gateway |
-| `start-nanobot-host` | (Re)starts the `nanobot-host` tmux session and attaches |
-| `00-start-nanobot` | Termux:Boot entry |
-| `update-nanobot` | Upgrades nanobot and restarts the gateway |
-| `update-nanobot-src` | Re-pulls the source tarball and restarts the gateway |
-| `debug-gateway` | Runs the gateway in the foreground with checks |
-| `collect-nanobot-logs` | Writes a redacted log report |
+| `scripts/nanobot-ctl` | The control command |
+| `scripts/nanobot-loop` | Keeps the gateway running, restarting it if it exits |
+| `scripts/00-start-nanobot` | Termux:Boot entry |
+
+Logs: `~/nanobot-logs/gateway.log` and `boot.log`.
 
 </details>
 

@@ -1,0 +1,80 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Control the nanobot gateway: nanobot-ctl start|stop|status|logs|attach|update|debug|config
+set -euo pipefail
+export PATH="/data/data/com.termux/files/usr/bin:${PATH:-}"
+export PROOT_NO_SECCOMP=1
+
+SESSION=nanobot-host
+LOG="$HOME/nanobot-logs/gateway.log"
+# cryptography 50.x wheels die with SIGILL (rc=132) under proot; 43-46 import fine.
+CRYPTO_PIN="cryptography<47"
+
+in_debian() {
+  proot-distro login debian -- /bin/bash -lc "set -e; source /root/nanobot-env/bin/activate; $1"
+}
+
+# Stopping kills the nanobot-host session, which would kill this script if it runs inside it.
+not_in_session() {
+  if [[ -n "${TMUX:-}" && "$(tmux display-message -p '#S' 2>/dev/null)" == "$SESSION" ]]; then
+    echo "Run this outside the $SESSION session (Ctrl+B then D to detach)." >&2
+    exit 1
+  fi
+}
+
+# Every Debian process runs under proot, so killing proot also catches gateways started by hand.
+stop() {
+  not_in_session
+  tmux kill-session -t "$SESSION" 2>/dev/null || true
+  pkill -f nanobot-loop 2>/dev/null || true
+  pkill proot 2>/dev/null || true
+  sleep 2
+  pkill -9 proot 2>/dev/null || true
+  echo "Gateway stopped."
+}
+
+start() {
+  stop
+  mkdir -p "$HOME/nanobot-logs"
+  tmux new-session -d -s "$SESSION" "$HOME/bin/nanobot-loop"
+  echo "Gateway started. Watch it with: nanobot-ctl logs"
+}
+
+case "${1:-}" in
+  start | restart) start ;;
+  stop) stop ;;
+  status)
+    if tmux has-session -t "$SESSION" 2>/dev/null; then echo "Running."; else echo "Not running."; fi
+    tail -n 3 "$LOG" 2>/dev/null || true
+    ;;
+  logs) tail -n 50 -f "$LOG" ;;
+  attach) exec tmux attach -t "$SESSION" ;;
+  update)
+    stop
+    in_debian "echo \"Current: \$(nanobot --version)\"
+      pip install -q -U nanobot-ai '$CRYPTO_PIN'
+      echo \"After:   \$(nanobot --version)\"" || echo "Update failed; restarting the current version."
+    start
+    ;;
+  debug)
+    # Foreground run; on a native crash faulthandler shows which package's import died.
+    stop
+    echo "Running the gateway in the foreground (Ctrl+C to stop, then: nanobot-ctl start)"
+    in_debian 'nanobot --version; python -X faulthandler "$(command -v nanobot)" gateway'
+    ;;
+  config) proot-distro login debian -- nano /root/.nanobot/config.json ;;
+  *)
+    cat <<EOF
+Usage: nanobot-ctl <command>
+
+  start    Start (or restart) the gateway in the background
+  stop     Stop every gateway, including ones started by hand
+  status   Is it running? Plus the last log lines
+  logs     Follow the gateway log (Ctrl+C to quit)
+  attach   Open the gateway's tmux session (Ctrl+B then D to leave)
+  update   Upgrade nanobot and restart
+  debug    Run the gateway in the foreground to see why it crashes
+  config   Edit /root/.nanobot/config.json, then run: nanobot-ctl start
+EOF
+    [[ -z "${1:-}" ]] || exit 1
+    ;;
+esac
