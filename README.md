@@ -7,7 +7,7 @@
 
 Run [Nanobot](https://pypi.org/project/nanobot-ai/) as a Telegram bot on your phone. It runs 24/7 and starts again by itself after a reboot.
 
-📝 Full story: [the setup write-up](https://github.com/gianfrancodemarco/site/blob/main/content/posts/nanobot-android-termux.md)
+📝 Full story: [the setup write-up](https://gianfrancodemarco.dev/posts/nanobot-android-termux/)
 
 ```mermaid
 flowchart TB
